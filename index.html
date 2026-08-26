@@ -1,0 +1,124 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Ружун</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    html, body { width: 100%; height: 100%; overflow: hidden; background: #020208; color: #dfe8f5;
+      font-family: 'Consolas', 'Courier New', monospace; user-select: none; }
+    #app { width: 100%; height: 100%; }
+    canvas { display: block; }
+
+    /* --- Меню --- */
+    #menu { position: fixed; inset: 0; z-index: 50; display: flex; align-items: center;
+      justify-content: center; background:
+        radial-gradient(1200px 600px at 20% 0%, rgba(80,140,220,0.28), transparent 60%),
+        radial-gradient(900px 500px at 90% 100%, rgba(120,90,200,0.24), transparent 60%),
+        #04040c; }
+    .panel { width: 470px; max-width: 94vw; padding: 28px 32px; border: 1px solid rgba(160,190,255,0.25);
+      background: rgba(10,14,28,0.9); box-shadow: 0 0 60px rgba(80,120,255,0.15); }
+    .panel h1 { font-size: 32px; letter-spacing: 8px; margin-bottom: 2px;
+      background: linear-gradient(90deg,#a7c7ff,#c58bff); -webkit-background-clip: text;
+      color: transparent; text-shadow: 0 0 20px rgba(120,160,255,0.4); }
+    .panel .sub { color: #9fb0c8; font-size: 12px; letter-spacing: 3px; margin-bottom: 18px; }
+    .field { margin-bottom: 14px; }
+    .field label { display: block; font-size: 11px; color: #7f93b8; letter-spacing: 2px; margin-bottom: 6px; }
+    .field input { width: 100%; padding: 9px 12px; background: #0a0f1e; border: 1px solid #2a3a5e;
+      color: #dfe8f5; font-family: inherit; font-size: 14px; }
+    .field input:focus { outline: none; border-color: #6f96ff; }
+    .row { display: flex; gap: 10px; margin-top: 18px; }
+    button { flex: 1; padding: 11px; background: #15203a; border: 1px solid #2c3f6b; color: #dfe8f5;
+      font-family: inherit; font-size: 14px; letter-spacing: 1px; cursor: pointer; transition: all .12s; }
+    button:hover { background: #1e2e55; border-color: #5d88ff; }
+    button.primary { background: linear-gradient(180deg,#2a3f7a,#1b2b52); border-color: #5d88ff; color: #fff; }
+    button:disabled { opacity: 0.35; cursor: default; }
+    button:disabled:hover { background: #15203a; border-color: #2c3f6b; }
+    .tip { font-size: 11px; color: #70829f; line-height: 1.6; margin-top: 14px; }
+    .keys { margin-top: 12px; font-size: 11px; line-height: 1.7; color: #8194b5; }
+    .keys b, .keys kbd { color: #ccd9f0; }
+
+    /* --- HUD --- */
+    #crosshair { position: fixed; left: 50%; top: 50%; transform: translate(-50%,-50%);
+      width: 10px; height: 10px; z-index: 20; pointer-events: none; }
+    #crosshair::before, #crosshair::after { content: ''; position: absolute; background: #cfdff5;
+      box-shadow: 0 0 4px rgba(255,255,255,0.8); }
+    #crosshair::before { left: 4px; top: 0; width: 2px; height: 10px; }
+    #crosshair::after { top: 4px; left: 0; height: 2px; width: 10px; }
+
+    /* Компас */
+    #compass { position: fixed; left: 12px; top: 34px; width: 96px; height: 96px; z-index: 24;
+      opacity: 0.92; pointer-events: none; filter: drop-shadow(0 1px 3px rgba(0,0,0,0.5)); }
+    #hintinfo { position: fixed; left: 12px; top: 132px; width: 96px; z-index: 24;
+      font-size: 10px; line-height: 1.3; color: #ffd24a; text-align: center;
+      pointer-events: none; text-shadow: 0 1px 2px rgba(0,0,0,0.8); }
+
+    /* Оружие/инфо в правом нижнем углу */
+    #hud { position: fixed; z-index: 25; pointer-events: none; right: 20px; bottom: 18px;
+      display: flex; flex-direction: column; align-items: flex-end; }
+    #hud .wname { font-size: 16px; color: #dfe8f5; text-shadow: 0 0 8px rgba(90,130,255,0.5); }
+    #hud .wtype { font-size: 11px; color: #89a0c5; margin-top: 2px; }
+    #hud .wammo { font-size: 11px; color: #a8bcd8; margin-top: 2px; letter-spacing: 0.5px; }
+    #hud .ammo { font-size: 20px; color: #ffd97a; margin-top: 6px; letter-spacing: 1px; }
+
+    /* Левый нижний угол */
+    #leftinfo { position: fixed; left: 20px; bottom: 18px; z-index: 25; display: flex;
+      flex-direction: column; align-items: flex-start; pointer-events: none; }
+    #hp { font-size: 14px; color: #9fd0ff; line-height: 1.2;
+      text-shadow: 0 0 8px rgba(90,130,255,0.4); }
+    #seedinfo { margin-top: 2px; font-size: 10px; line-height: 1.2; color: #ffffff; opacity: 0.55; letter-spacing: 0.5px; }
+
+    /* Подсказка */
+    #prompt { position: fixed; left: 50%; bottom: 18%; transform: translateX(-50%); z-index: 25;
+      background: rgba(6,10,22,0.85); border: 1px solid rgba(150,190,255,0.3); padding: 8px 14px;
+      color: #e6efff; font-size: 13px; display: none; letter-spacing: 1px; }
+
+    /* Оверлей загрузки */
+    #loading { position: fixed; inset: 0; z-index: 40; display: none; align-items: center;
+      justify-content: center; background: rgba(2,2,8,0.82); font-size: 15px; letter-spacing: 3px; }
+
+    /* Флэш сообщений */
+    #flash { position: fixed; left: 50%; top: 22%; transform: translateX(-50%); z-index: 28;
+      background: rgba(6,10,22,0.9); border: 1px solid rgba(150,190,255,0.3); padding: 10px 18px;
+      color: #e6efff; font-size: 14px; display: none; letter-spacing: 1px; pointer-events: none; }
+  </style>
+</head>
+<body>
+  <div id="app"></div>
+
+  <div id="menu">
+    <div class="panel">
+      <h1>РУЖУН</h1>
+      <div class="sub">НЕБЕСНЫЕ ОСТРОВА · ДЖУНГЛИ · СУЩЕСТВА</div>
+      <div class="field">
+        <label>SEED МИРА</label>
+        <input id="seedInput" placeholder="оставь пустым для случайного" autocomplete="off" />
+      </div>
+      <div class="row">
+        <button id="btnStart" class="primary">ВОЙТИ В МИР</button>
+      </div>
+      <div class="keys">
+        <kbd>W A S D</kbd> — движение · <kbd>Мышь</kbd> — взгляд<br/>
+        <kbd>E</kbd> — взаимодействие · <kbd>R</kbd> — перезарядка<br/>
+        <kbd>LMB</kbd> — огонь · <kbd>Esc</kbd> — меню
+      </div>
+      <div class="tip">Выживай: добывай артефакты, снадобья и побеждай опасных зверей. Мир бесконечный и строится через seed.</div>
+    </div>
+  </div>
+
+  <div id="loading">ГЕНЕРАЦИЯ МИРА...</div>
+  <div id="crosshair"></div>
+  <canvas id="compass" width="96" height="96"></canvas>
+  <div id="hintinfo"></div>
+  <div id="leftinfo">
+    <div id="hp">HP: 250/250</div>
+    <div id="seedinfo"></div>
+  </div>
+  <div id="prompt"></div>
+  <div id="hud"></div>
+  <div id="flash"></div>
+
+  <script type="module" src="/src/main.js"></script>
+</body>
+</html>
