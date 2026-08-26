@@ -22,7 +22,7 @@
 
 ## Команды
 
-- Dev-сервер: `npm run dev` (порт 7000, `--host`). Игра: http://localhost:7000/
+- Dev-сервер: `npm run dev` (порт 7001, `--host`). Игра: http://localhost:7001/
 - Сборка: `npm run build` (важно проверять после изменений).
 - Проверка синтаксиса конкретного файла: `node --check src/...`.
 
@@ -45,9 +45,9 @@ if ($p.HasExited) { "ПРОЦЕСС УПАЛ, код=$($p.ExitCode)"; Get-Conten
 
 - `npm` — это `npm.cmd` (иначе `Start-Process` не найдёт исполняемый файл).
 - stdout/err — РАЗНЫЕ файлы (`Start-Process` не даёт один на оба потока).
-- Готовность: `Get-NetTCPConnection -LocalPort 7000 -State Listen` либо
-  `Invoke-WebRequest http://localhost:7000/` → HTTP 200.
-- Остановить: `Stop-Process -Id <PID>` (PID из OwningProcess на порту 7000).
+- Готовность: `Get-NetTCPConnection -LocalPort 7001 -State Listen` либо
+  `Invoke-WebRequest http://localhost:7001/` → HTTP 200.
+- Остановить: `Stop-Process -Id <PID>` (PID из OwningProcess на порту 7001).
 
 ## Структура src/
 

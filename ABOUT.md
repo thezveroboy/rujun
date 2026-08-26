@@ -57,14 +57,14 @@
 ## Технологии
 
 - **three.js** — 3D-графика.
-- **Vite** — сборка и dev-сервер (порт 7000).
+- **Vite** — сборка и dev-сервер (порт 7001).
 - Чистый JS без фреймворков, модули ES (`import`/`export`).
 - Детерминированный RNG (`mulberry32`, хэши координат) в `src/core/rng.js` — основа генерации мира.
 
 ## Команды
 
 ```bash
-npm run dev      # dev-сервер, http://localhost:7000/
+npm run dev      # dev-сервер, http://localhost:7001/
 npm run build    # продакшн-сборка в dist/
 npm run preview  # просмотр сборки локально
 ```
