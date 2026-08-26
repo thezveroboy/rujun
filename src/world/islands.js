@@ -53,12 +53,11 @@ function treeCount(radius, rng) {
 export function buildIslandMesh(isl, rng) {
   const group = new THREE.Group();
   group.position.set(isl.cx, isl.topY, isl.cz);
-  group.rotation.x = -Math.PI / 2; // платформа лежит на уровне моря
+  // Группа без поворота: деревья растут вверх (местная +Y -> мировая +Y).
 
   // --- Платформа: диск с органичной деформацией краёв (skill complex-geometry). ---
   const segs = 48;
   const geo = new THREE.CircleGeometry(1, segs);
-  geo.rotateX(Math.PI / 2); // лежит в плоскости XZ
   const verts = geo.attributes.position.array;
   for (let i = 0; i < verts.length; i += 3) {
     const x = verts[i], z = verts[i + 2];
@@ -74,16 +73,22 @@ export function buildIslandMesh(isl, rng) {
   const platform = new THREE.Mesh(geo, mat);
   platform.castShadow = true;
   platform.receiveShadow = true;
+  // масштаб платформы под радиус острова (CircleGeometry по умолчанию — единица)
+  platform.scale.setScalar(isl.radius);
+  // Поворот платформы на -PI/2 кладёт диск горизонтально (в XZ), нормалью вверх (+Y).
+  platform.rotation.x = -Math.PI / 2;
   group.add(platform);
 
-  // --- Джунгли: деревья по платформе. ---
+  // --- Джунгли: деревья по платформе — растут из её поверхности. ---
   const count = treeCount(isl.radius, rng);
   for (let t = 0; t < count; t++) {
     const a = rng() * Math.PI * 2;
     const rr = rng() * isl.radius * 0.85;
     const tx = Math.cos(a) * rr, tz = Math.sin(a) * rr;
-    const th = SEA_LEVEL + fbm(tx * 0.01, tz * 0.01, 2, hashStr('treeh:' + isl.cx + ':' + isl.cz)) * 4;
-    const tree = buildTree(tx, th, tz, rng);
+    // база дерева — на высоте поверхности платформы +1м (группа без поворота:
+    // местная y = мировая y), чтобы сосны росли из земли вверх, а не висели в воздухе.
+    const ty = 1.0;
+    const tree = buildTree(tx, ty, tz, rng);
     group.add(tree);
   }
   return group;

@@ -59,7 +59,7 @@ document.addEventListener('pointerlockchange', () => {
 });
 addEventListener('mousemove', (e) => {
   if (!pointerLocked) return;
-  player.yaw -= e.movementX * 0.0022;
+  player.yaw += e.movementX * 0.0022;
   player.pitch -= e.movementY * 0.0022;
   const lim = Math.PI / 2 - 0.03;
   player.pitch = Math.max(-lim, Math.min(lim, player.pitch));
@@ -158,8 +158,8 @@ function frame(now) {
   const t = now / 1000; // секунды реального времени
 
   if (gameStarted && pointerLocked) {
-    const fwd = new THREE.Vector3(-Math.sin(player.yaw), 0, -Math.cos(player.yaw));
-    const right = new THREE.Vector3(Math.cos(player.yaw), 0, -Math.sin(player.yaw));
+    const fwd = new THREE.Vector3(Math.sin(player.yaw), 0, Math.cos(player.yaw));
+    const right = new THREE.Vector3(-Math.cos(player.yaw), 0, Math.sin(player.yaw));
     const move = new THREE.Vector3();
     if (keys['KeyW']) move.add(fwd);
     if (keys['KeyS']) move.sub(fwd);
