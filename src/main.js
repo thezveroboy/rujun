@@ -3,6 +3,7 @@
 
 import * as THREE from 'three';
 import { hashStr, mulberry32 } from './core/rng.js';
+import { islandAt, islandRng, buildIslandMesh, WORLD_HALF, SEA_LEVEL } from './world/islands.js';
 
 const ui = {
   menu: document.getElementById('menu'),
@@ -78,30 +79,58 @@ function flash(text, ms = 2200) {
 function showPrompt(text) { ui.prompt.textContent = text; ui.prompt.style.display = 'block'; }
 function hidePrompt() { ui.prompt.style.display = 'none'; }
 
-// --- Мир: небесные острова (заготовка, расширяется по GOALS.md) ---
-const world = { chunks: new Map(), seed: 0 };
-let groundMesh = null;
+// --- Мир: небесные острова через seed (src/world/islands.js). ---
+const world = { seed: 0, meshes: [] };
 
-function buildIsland(cx, cz, rng) {
-  const size = 120 + rng() * 80;
-  const geo = new THREE.CircleGeometry(size, 64);
-  geo.rotateX(-Math.PI / 2);
-  const mat = new THREE.MeshLambertMaterial({ color: 0x3f7a3a });
-  const mesh = new THREE.Mesh(geo, mat);
-  mesh.position.set(cx, 0, cz);
-  scene.add(mesh);
-  return mesh;
+function clearWorld() {
+  for (const m of world.meshes) scene.remove(m);
+  world.meshes = [];
+}
+
+// Высота пола под точкой (верх ближайшего острова или уровень моря над пустотой).
+function groundHeightAt(x, z) {
+  let best = SEA_LEVEL; // над пустотой — море
+  for (const m of world.meshes) {
+    const dx = m.position.x - x, dz = m.position.z - z;
+    if (dx * dx + dz * dz > 40 * 40) continue; // радиус стояния 40 м
+    if (m.position.y > best) best = m.position.y;
+  }
+  return best;
+}
+
+// Сетка островов для отрисовки: берём существующие острова в пределах ±WORLD_HALF.
+function sampleIslands(seed, cap) {
+  const step = 512; // расстояние между точками сетки
+  const built = [];
+  for (let gx = -Math.ceil(WORLD_HALF / step); gx <= Math.ceil(WORLD_HALF / step); gx++) {
+    for (let gz = -Math.ceil(WORLD_HALF / step); gz <= Math.ceil(WORLD_HALF / step); gz++) {
+      if (built.length >= cap) break;
+      const isl = islandAt(gx * step, gz * step, seed);
+      if (isl && Math.hypot(isl.cx, isl.cz) <= WORLD_HALF) built.push(isl);
+    }
+  }
+  return built;
 }
 
 function generateWorld(seed) {
   world.seed = seed;
+  clearWorld();
   const rng = mulberry32((seed | 0) ^ 0x9e3779b9);
-  // Игрок появляется на случайном острове мира.
-  const px = (rng() * 4000 - 2000) | 0;
-  const pz = (rng() * 4000 - 2000) | 0;
-  player.pos.set(px, 8, pz);
-  if (groundMesh) scene.remove(groundMesh);
-  groundMesh = buildIsland(px, pz, rng);
+
+  // Игрок появляется на ближайшем существующем острове к случайной точке.
+  let spawnIsl = null;
+  for (let r = 0; r <= WORLD_HALF && !spawnIsl; r += 64) {
+    const a = rng() * Math.PI * 2;
+    const cx = Math.round(player.pos.x + Math.cos(a) * r);
+    const cz = Math.round(player.pos.z + Math.sin(a) * r);
+    spawnIsl = islandAt(cx, cz, seed);
+  }
+  if (!spawnIsl) { player.pos.set(0, 120, 0); return; } // крайний фолбэк
+  player.pos.y = spawnIsl.topY + 3;
+
+  for (const isl of sampleIslands(seed, 24)) {
+    world.meshes.push(buildIslandMesh(isl, islandRng(isl.cx, isl.cz, seed)));
+  }
 }
 
 // --- Игровой цикл (время через performance.now(), НЕ THREE.Clock) ---
@@ -123,6 +152,8 @@ function frame(now) {
       player.pos.add(move);
       player.yaw = Math.atan2(move.x, move.z);
     }
+    // Приземление на ближайший остров или уровень моря над пустотой.
+    player.pos.y = groundHeightAt(player.pos.x, player.pos.z) + 2;
     // Камера следует за игроком сзади-сверху.
     const dir = new THREE.Vector3(
       -Math.sin(player.yaw) * Math.cos(player.pitch),
