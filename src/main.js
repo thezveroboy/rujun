@@ -98,18 +98,30 @@ function groundHeightAt(x, z) {
   return best;
 }
 
-// Сетка островов для отрисовки: берём существующие острова в пределах ±WORLD_HALF.
-function sampleIslands(seed, cap) {
-  const step = 512; // расстояние между точками сетки
-  const built = [];
+// Сетка островов для отрисовки ВКРУГ точки (cx0,cz0): берём существующие острова
+// в пределах ±WORLD_HALF на шаге `step`, сортируем по расстоянию до центра и
+// оставляем ближайшие `cap` — так спавн-остров (расстояние 0) всегда рисуется,
+// а рядом со спавном — соседние платформы. Детерминировано от seed и центра.
+function sampleIslands(seed, cap, cx0, cz0) {
+  const step = 256; // расстояние между точками сетки (было 512 — слишком редкая)
+  const found = [];
   for (let gx = -Math.ceil(WORLD_HALF / step); gx <= Math.ceil(WORLD_HALF / step); gx++) {
     for (let gz = -Math.ceil(WORLD_HALF / step); gz <= Math.ceil(WORLD_HALF / step); gz++) {
-      if (built.length >= cap) break;
-      const isl = islandAt(gx * step, gz * step, seed);
-      if (isl && Math.hypot(isl.cx, isl.cz) <= WORLD_HALF) built.push(isl);
+      const wx = cx0 + gx * step;
+      const wz = cz0 + gz * step;
+      if (Math.hypot(wx, wz) > WORLD_HALF) continue; // за границей мира пусто
+      const isl = islandAt(wx, wz, seed);
+      if (isl) found.push(isl);
     }
   }
-  return built;
+  found.sort((a, b) => {
+    const da = Math.abs(a.cx - cx0), db = Math.abs(b.cx - cx0);
+    if (da !== db) return da < db ? -1 : 1;
+    const dz = Math.abs(a.cz - cz0), dw = Math.abs(b.cz - cz0);
+    if (dz !== dw) return dz < dw ? -1 : 1;
+    return 0;
+  });
+  return found.slice(0, cap);
 }
 
 function generateWorld(seed) {
@@ -126,9 +138,13 @@ function generateWorld(seed) {
     spawnIsl = islandAt(cx, cz, seed);
   }
   if (!spawnIsl) { player.pos.set(0, 120, 0); return; } // крайний фолбэк
+  // Переносим игрока НА остров (раньше менялась только высота — игрок оставался
+  // в точке (0,0), а спавн-остров мог лежать за километры → пустой экран).
+  player.pos.x = spawnIsl.cx;
+  player.pos.z = spawnIsl.cz;
   player.pos.y = spawnIsl.topY + 3;
 
-  for (const isl of sampleIslands(seed, 24)) {
+  for (const isl of sampleIslands(seed, 48, spawnIsl.cx, spawnIsl.cz)) {
     world.meshes.push(buildIslandMesh(isl, islandRng(isl.cx, isl.cz, seed)));
   }
 }
