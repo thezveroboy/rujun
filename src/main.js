@@ -145,7 +145,9 @@ function generateWorld(seed) {
   player.pos.y = spawnIsl.topY + 3;
 
   for (const isl of sampleIslands(seed, 48, spawnIsl.cx, spawnIsl.cz)) {
-    world.meshes.push(buildIslandMesh(isl, islandRng(isl.cx, isl.cz, seed)));
+    const mesh = buildIslandMesh(isl, islandRng(isl.cx, isl.cz, seed));
+    scene.add(mesh); // острова добавляем в сцену — иначе они только в world.meshes (для коллизий) и не рендерятся
+    world.meshes.push(mesh);
   }
 }
 
